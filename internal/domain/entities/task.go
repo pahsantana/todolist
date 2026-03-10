@@ -1,4 +1,4 @@
-package domain
+package entities
 
 import "time"
 
@@ -15,4 +15,30 @@ type Task struct {
 
 func (t *Task) IsCompleted() bool {
 	return t.Status == Completed
+}
+
+func (t *Task) Apply(title, description *string, status *Status, priority *Priority, dueDate *string) error {
+	if title != nil {
+		t.Title = *title
+	}
+	if description != nil {
+		t.Description = *description
+	}
+	if status != nil {
+		if !IsValidStatus(*status) {
+			return InvalidStatus
+		}
+		t.Status = *status
+	}
+	if priority != nil {
+		if !IsValidPriority(*priority) {
+			return InvalidPriority
+		}
+		t.Priority = *priority
+	}
+	if dueDate != nil {
+		t.DueDate = dueDate
+	}
+	t.UpdatedAt = time.Now()
+	return nil
 }
