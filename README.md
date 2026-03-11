@@ -46,7 +46,7 @@ docker compose up -d mongo mongo-express
 ### 4. Install dependencies and run
 ```bash
 go mod tidy
-go run ./cmd/api
+go run main.go
 ```
 
 API will be available at `http://localhost:8080`
