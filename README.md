@@ -316,6 +316,6 @@ Invoke-WebRequest -Uri "http://localhost:8080/tasks" -Method POST -Headers @{"Co
 | MongoDB 7 | Database |
 | Zap | Structured logging |
 | Docker | Containerization |
-feat: add dockerfile and docker-compose
+
 docs: add readme
 ```
