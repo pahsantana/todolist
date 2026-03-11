@@ -7,10 +7,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/pahsantana/todolist/config"
+	_ "github.com/pahsantana/todolist/docs"
 	"github.com/pahsantana/todolist/internal/handlers"
 	"github.com/pahsantana/todolist/internal/middleware"
 	"github.com/pahsantana/todolist/internal/repositories"
 	"github.com/pahsantana/todolist/internal/services"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
 )
 
@@ -42,6 +45,7 @@ func main() {
 
 	router.GET("/health", handlers.Health)
 
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	tasks := router.Group("/tasks")
 	{
 		tasks.POST("", handler.Create)

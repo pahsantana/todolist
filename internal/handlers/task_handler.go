@@ -30,6 +30,16 @@ func NewTaskHandler(service *services.TaskService, log *zap.Logger) *TaskHandler
 	return &TaskHandler{service: service, log: log}
 }
 
+// Create godoc
+// @Summary     Create a new task
+// @Tags        tasks
+// @Accept      json
+// @Produce     json
+// @Param       task body services.CreateTaskInput true "Task data"
+// @Success     201 {object} entities.Task
+// @Failure     400 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /tasks [post]
 func (h *TaskHandler) Create(c *gin.Context) {
 	var input services.CreateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -47,6 +57,16 @@ func (h *TaskHandler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, task)
 }
 
+// List godoc
+// @Summary     List tasks
+// @Tags        tasks
+// @Produce     json
+// @Param       status   query string false "Filter by status"   Enums(pending, in_progress, completed, cancelled)
+// @Param       priority query string false "Filter by priority" Enums(low, medium, high)
+// @Success     200 {array}  entities.Task
+// @Failure     400 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /tasks [get]
 func (h *TaskHandler) List(c *gin.Context) {
 	filters := map[string]string{
 		queryStatus:   c.Query(queryStatus),
@@ -62,6 +82,15 @@ func (h *TaskHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, tasks)
 }
 
+// GetByID godoc
+// @Summary     Get task by ID
+// @Tags        tasks
+// @Produce     json
+// @Param       id path string true "Task ID"
+// @Success     200 {object} entities.Task
+// @Failure     404 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /tasks/{id} [get]
 func (h *TaskHandler) GetByID(c *gin.Context) {
 	task, err := h.service.GetByID(c.Request.Context(), c.Param(paramID))
 	if err != nil {
@@ -72,6 +101,19 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
+// Update godoc
+// @Summary     Update a task
+// @Tags        tasks
+// @Accept      json
+// @Produce     json
+// @Param       id   path string true "Task ID"
+// @Param       task body services.UpdateTaskInput true "Fields to update"
+// @Success     200 {object} entities.Task
+// @Failure     400 {object} map[string]string
+// @Failure     404 {object} map[string]string
+// @Failure     422 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /tasks/{id} [put]
 func (h *TaskHandler) Update(c *gin.Context) {
 	var input services.UpdateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -89,6 +131,14 @@ func (h *TaskHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, task)
 }
 
+// Delete godoc
+// @Summary     Delete a task
+// @Tags        tasks
+// @Param       id path string true "Task ID"
+// @Success     204
+// @Failure     404 {object} map[string]string
+// @Failure     500 {object} map[string]string
+// @Router      /tasks/{id} [delete]
 func (h *TaskHandler) Delete(c *gin.Context) {
 	id := c.Param(paramID)
 	if err := h.service.Delete(c.Request.Context(), id); err != nil {
