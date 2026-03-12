@@ -3,6 +3,7 @@ package handlers
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pahsantana/todolist/internal/domain/entities"
@@ -43,7 +44,7 @@ func NewTaskHandler(service *services.TaskService, log *zap.Logger) *TaskHandler
 func (h *TaskHandler) Create(c *gin.Context) {
 	var input services.CreateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(err.Error()))
+		c.JSON(http.StatusBadRequest, errorResponse(translateBindingError(err)))
 		return
 	}
 
@@ -117,7 +118,7 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 func (h *TaskHandler) Update(c *gin.Context) {
 	var input services.UpdateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, errorResponse(err.Error()))
+		c.JSON(http.StatusBadRequest, errorResponse(translateBindingError(err)))
 		return
 	}
 
@@ -158,7 +159,11 @@ func (h *TaskHandler) handleError(c *gin.Context, err error) {
 		c.JSON(http.StatusUnprocessableEntity, errorResponse(err.Error()))
 	case errors.Is(err, entities.InvalidStatus),
 		errors.Is(err, entities.InvalidPriority),
-		errors.Is(err, entities.DueDateInPast):
+		errors.Is(err, entities.DueDateInPast),
+		errors.Is(err, entities.TitleTooShort),
+		errors.Is(err, entities.TitleTooLong),
+		errors.Is(err, entities.TitleRequired),
+		errors.Is(err, entities.PriorityRequired):
 		c.JSON(http.StatusBadRequest, errorResponse(err.Error()))
 	default:
 		h.log.Error(logInternal, zap.Error(err))
@@ -168,4 +173,20 @@ func (h *TaskHandler) handleError(c *gin.Context, err error) {
 
 func errorResponse(msg string) gin.H {
 	return gin.H{"error": msg}
+}
+
+func translateBindingError(err error) string {
+	msg := err.Error()
+	switch {
+	case strings.Contains(msg, "Title") && strings.Contains(msg, "min"):
+		return entities.TitleTooShort.Error()
+	case strings.Contains(msg, "Title") && strings.Contains(msg, "max"):
+		return entities.TitleTooLong.Error()
+	case strings.Contains(msg, "Title") && strings.Contains(msg, "required"):
+		return entities.TitleRequired.Error()
+	case strings.Contains(msg, "Priority") && strings.Contains(msg, "required"):
+		return entities.PriorityRequired.Error()
+	default:
+		return msg
+	}
 }

@@ -19,6 +19,12 @@ func (t *Task) IsCompleted() bool {
 
 func (t *Task) Apply(title, description *string, status *Status, priority *Priority, dueDate *string) error {
 	if title != nil {
+		if len(*title) < 3 {
+			return TitleTooShort
+		}
+		if len(*title) > 100 {
+			return TitleTooLong
+		}
 		t.Title = *title
 	}
 	if description != nil {
