@@ -5,7 +5,7 @@
 The project follows **Clean Architecture** principles, organizing code into layers with well-defined responsibilities:
 
 ```
-main.go          → application entry point/depency injection
+main.go          → application entry point/dependency injection
 config/           → environment variables
 internal/
 ├── domain/
