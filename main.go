@@ -53,6 +53,7 @@ func main() {
 		tasks.GET("/:id", handler.GetByID)
 		tasks.PUT("/:id", handler.Update)
 		tasks.DELETE("/:id", handler.Delete)
+		tasks.GET("/summary", handler.Summary)
 	}
 
 	logger.Info("server starting", zap.String("port", cfg.ServerPort))

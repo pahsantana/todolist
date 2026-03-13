@@ -4,17 +4,18 @@ import (
 	"context"
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 	"github.com/pahsantana/todolist/internal/domain/entities"
 	"github.com/pahsantana/todolist/internal/domain/repository"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/pahsantana/todolist/internal/dto"
 )
 
 const (
-	idField        = "_id"
-	setOperator    = "$set"
-	filterStatus   = "status"
-	filterPriority = "priority"
+	idField         = "_id"
+	setOperator     = "$set"
+	filterStatus    = "status"
+	filterPriority  = "priority"
 	tasksCollection = "tasks"
 )
 
@@ -26,6 +27,46 @@ func NewTaskRepository(db *mongo.Database) repository.TaskRepository {
 	return &TaskRepository{
 		collection: db.Collection(tasksCollection),
 	}
+}
+
+func (r *TaskRepository) ListCountByStatus(ctx context.Context) (*dto.TaskSummary, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$group", Value: bson.D{
+			{Key: idField, Value: "$status"},
+			{Key: "count", Value: bson.D{{Key: "$sum", Value: 1}}},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	summary := &dto.TaskSummary{}
+
+	for cursor.Next(ctx) {
+		var result struct {
+			ID    string `bson:"_id"`
+			Count int64  `bson:"count"`
+		}
+		if err := cursor.Decode(&result); err != nil {
+			return nil, err
+		}
+
+		switch entities.Status(result.ID) {
+		case entities.Pending:
+			summary.Pending = result.Count
+		case entities.InProgress:
+			summary.InProgress = result.Count
+		case entities.Completed:
+			summary.Completed = result.Count
+		case entities.Cancelled:
+			summary.Cancelled = result.Count
+		}
+	}
+
+	return summary, nil
 }
 
 func (r *TaskRepository) Create(ctx context.Context, task *entities.Task) error {

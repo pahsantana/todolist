@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pahsantana/todolist/internal/domain/entities"
 	"github.com/pahsantana/todolist/internal/domain/repository"
+	"github.com/pahsantana/todolist/internal/dto"
 )
 
 type TaskService struct {
@@ -17,22 +18,11 @@ func NewTaskService(repo repository.TaskRepository) *TaskService {
 	return &TaskService{repo: repo}
 }
 
-type CreateTaskInput struct {
-	Title       string            `json:"title"       binding:"required,min=3,max=100"`
-	Description string            `json:"description"`
-	Priority    entities.Priority `json:"priority"    binding:"required"`
-	DueDate     *string           `json:"due_date"`
+func (uc *TaskService) Summary(ctx context.Context) (*dto.TaskSummary, error) {
+	return uc.repo.ListCountByStatus(ctx)
 }
 
-type UpdateTaskInput struct {
-	Title       *string            `json:"title"       binding:"omitempty,min=3,max=100"`
-	Description *string            `json:"description"`
-	Status      *entities.Status   `json:"status"`
-	Priority    *entities.Priority `json:"priority"`
-	DueDate     *string            `json:"due_date"`
-}
-
-func (uc *TaskService) Create(ctx context.Context, input CreateTaskInput) (*entities.Task, error) {
+func (uc *TaskService) Create(ctx context.Context, input dto.CreateTaskInput) (*entities.Task, error) {
 	if !entities.IsValidPriority(input.Priority) {
 		return nil, entities.InvalidPriority
 	}
@@ -90,7 +80,7 @@ func (uc *TaskService) GetByID(ctx context.Context, id string) (*entities.Task, 
 	return task, nil
 }
 
-func (uc *TaskService) Update(ctx context.Context, id string, input UpdateTaskInput) (*entities.Task, error) {
+func (uc *TaskService) Update(ctx context.Context, id string, input dto.UpdateTaskInput) (*entities.Task, error) {
 	task, err := uc.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

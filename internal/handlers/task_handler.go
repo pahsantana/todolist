@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pahsantana/todolist/internal/domain/entities"
+	"github.com/pahsantana/todolist/internal/dto"
 	"github.com/pahsantana/todolist/internal/services"
 	"go.uber.org/zap"
 )
@@ -31,18 +32,36 @@ func NewTaskHandler(service *services.TaskService, log *zap.Logger) *TaskHandler
 	return &TaskHandler{service: service, log: log}
 }
 
+// Summary godoc
+// @Summary     Count tasks by status
+// @Tags        tasks
+// @Produce     json
+// @Success     200 {object} entities.TaskSummary
+// @Failure     500 {object} map[string]string
+// @Router      /tasks/summary [get]
+func (h *TaskHandler) Summary(c *gin.Context) {
+	summary, err := h.service.Summary(c.Request.Context())
+	if err != nil {
+		h.log.Error(logInternal, zap.Error(err))
+		c.JSON(http.StatusInternalServerError, errorResponse(entities.InternalServer.Error()))
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}
+
 // Create godoc
 // @Summary     Create a new task
 // @Tags        tasks
 // @Accept      json
 // @Produce     json
-// @Param       task body services.CreateTaskInput true "Task data"
+// @Param       task body dto.CreateTaskInput true "Task data"
 // @Success     201 {object} entities.Task
 // @Failure     400 {object} map[string]string
 // @Failure     500 {object} map[string]string
 // @Router      /tasks [post]
 func (h *TaskHandler) Create(c *gin.Context) {
-	var input services.CreateTaskInput
+	var input dto.CreateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, errorResponse(translateBindingError(err)))
 		return
@@ -108,7 +127,7 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 // @Accept      json
 // @Produce     json
 // @Param       id   path string true "Task ID"
-// @Param       task body services.UpdateTaskInput true "Fields to update"
+// @Param       task body dto.UpdateTaskInput true "Fields to update"
 // @Success     200 {object} entities.Task
 // @Failure     400 {object} map[string]string
 // @Failure     404 {object} map[string]string
@@ -116,7 +135,7 @@ func (h *TaskHandler) GetByID(c *gin.Context) {
 // @Failure     500 {object} map[string]string
 // @Router      /tasks/{id} [put]
 func (h *TaskHandler) Update(c *gin.Context) {
-	var input services.UpdateTaskInput
+	var input dto.UpdateTaskInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, errorResponse(translateBindingError(err)))
 		return

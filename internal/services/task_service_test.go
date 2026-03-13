@@ -8,6 +8,7 @@ import (
 
 	"github.com/pahsantana/todolist/internal/domain/entities"
 	"github.com/pahsantana/todolist/internal/domain/repository"
+	"github.com/pahsantana/todolist/internal/dto"
 	"github.com/pahsantana/todolist/internal/services"
 )
 
@@ -56,6 +57,23 @@ func (m *mockRepo) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
+func (m *mockRepo) ListCountByStatus(ctx context.Context) (*dto.TaskSummary, error) {
+	summary := &dto.TaskSummary{}
+	for _, t := range m.tasks {
+		switch t.Status {
+		case entities.Pending:
+			summary.Pending++
+		case entities.InProgress:
+			summary.InProgress++
+		case entities.Completed:
+			summary.Completed++
+		case entities.Cancelled:
+			summary.Cancelled++
+		}
+	}
+	return summary, nil
+}
+
 var _ repository.TaskRepository = (*mockRepo)(nil)
 
 func newSvc() (*services.TaskService, *mockRepo) {
@@ -70,7 +88,7 @@ func futureDate() *string {
 
 func seedTask(t *testing.T, svc *services.TaskService) *entities.Task {
 	t.Helper()
-	task, err := svc.Create(context.Background(), services.CreateTaskInput{
+	task, err := svc.Create(context.Background(), dto.CreateTaskInput{
 		Title:    "Study Golang",
 		Priority: entities.High,
 		DueDate:  futureDate(),
@@ -101,12 +119,12 @@ func TestCreateTask(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		input   services.CreateTaskInput
+		input   dto.CreateTaskInput
 		wantErr error
 	}{
 		{
 			name: "successfully creates a task",
-			input: services.CreateTaskInput{
+			input: dto.CreateTaskInput{
 				Title:    "Study Golang",
 				Priority: entities.High,
 				DueDate:  futureDate(),
@@ -114,17 +132,17 @@ func TestCreateTask(t *testing.T) {
 		},
 		{
 			name:    "fails with invalid priority",
-			input:   services.CreateTaskInput{Title: "Test", Priority: "urgent"},
+			input:   dto.CreateTaskInput{Title: "Test", Priority: "urgent"},
 			wantErr: entities.InvalidPriority,
 		},
 		{
 			name:    "fails when due date is in the past",
-			input:   services.CreateTaskInput{Title: "Test", Priority: entities.Low, DueDate: &past},
+			input:   dto.CreateTaskInput{Title: "Test", Priority: entities.Low, DueDate: &past},
 			wantErr: entities.DueDateInPast,
 		},
 		{
 			name:    "fails with invalid date format",
-			input:   services.CreateTaskInput{Title: "Test", Priority: entities.Low, DueDate: &invalidDate},
+			input:   dto.CreateTaskInput{Title: "Test", Priority: entities.Low, DueDate: &invalidDate},
 			wantErr: entities.InvalidDateFormat,
 		},
 	}
@@ -237,32 +255,32 @@ func TestUpdateTask(t *testing.T) {
 	tests := []struct {
 		name    string
 		id      func(svc *services.TaskService, repo *mockRepo) string
-		input   services.UpdateTaskInput
+		input   dto.UpdateTaskInput
 		wantErr error
 	}{
 		{
 			name: "successfully updates a task",
 			id: func(svc *services.TaskService, _ *mockRepo) string {
 				s := time.Now().AddDate(0, 0, 7).Format(entities.DateLayout)
-				task, _ := svc.Create(context.Background(), services.CreateTaskInput{
+				task, _ := svc.Create(context.Background(), dto.CreateTaskInput{
 					Title:    "Study Golang",
 					Priority: entities.High,
 					DueDate:  &s,
 				})
 				return task.ID
 			},
-			input: services.UpdateTaskInput{Title: &newTitle, Status: &status},
+			input: dto.UpdateTaskInput{Title: &newTitle, Status: &status},
 		},
 		{
 			name:    "fails when task does not exist",
 			id:      func(_ *services.TaskService, _ *mockRepo) string { return "nonexistent-id" },
-			input:   services.UpdateTaskInput{Title: &newTitle},
+			input:   dto.UpdateTaskInput{Title: &newTitle},
 			wantErr: entities.TaskNotFound,
 		},
 		{
 			name:    "fails when task is completed",
 			id:      func(_ *services.TaskService, repo *mockRepo) string { return completedTask(repo).ID },
-			input:   services.UpdateTaskInput{Title: &newTitle},
+			input:   dto.UpdateTaskInput{Title: &newTitle},
 			wantErr: entities.TaskCompleted,
 		},
 	}
@@ -317,6 +335,54 @@ func TestDeleteTask(t *testing.T) {
 			}
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestSummary(t *testing.T) {
+	tests := []struct {
+		name string
+		seed func(svc *services.TaskService, repo *mockRepo)
+		want dto.TaskSummary
+	}{
+		{
+			name: "returns zero counts when no tasks exist",
+			seed: func(_ *services.TaskService, _ *mockRepo) {},
+			want: dto.TaskSummary{},
+		},
+		{
+			name: "correctly counts tasks by status",
+			seed: func(svc *services.TaskService, repo *mockRepo) {
+				s := time.Now().AddDate(0, 0, 7).Format(entities.DateLayout)
+				svc.Create(context.Background(), dto.CreateTaskInput{Title: "Task 1", Priority: entities.High, DueDate: &s})
+				svc.Create(context.Background(), dto.CreateTaskInput{Title: "Task 2", Priority: entities.Low, DueDate: &s})
+				completedTask(repo)
+			},
+			want: dto.TaskSummary{Pending: 2, Completed: 1},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, repo := newSvc()
+			tt.seed(svc, repo)
+
+			summary, err := svc.Summary(context.Background())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if summary.Pending != tt.want.Pending {
+				t.Errorf("pending: got %d, want %d", summary.Pending, tt.want.Pending)
+			}
+			if summary.InProgress != tt.want.InProgress {
+				t.Errorf("in_progress: got %d, want %d", summary.InProgress, tt.want.InProgress)
+			}
+			if summary.Completed != tt.want.Completed {
+				t.Errorf("completed: got %d, want %d", summary.Completed, tt.want.Completed)
+			}
+			if summary.Cancelled != tt.want.Cancelled {
+				t.Errorf("cancelled: got %d, want %d", summary.Cancelled, tt.want.Cancelled)
 			}
 		})
 	}
