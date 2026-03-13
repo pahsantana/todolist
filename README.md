@@ -5,7 +5,7 @@
 The project follows **Clean Architecture** principles, organizing code into layers with well-defined responsibilities:
 
 ```
-cmd/api/          → application entry point
+main.go          → application entry point/depency injection
 config/           → environment variables
 internal/
 ├── domain/
@@ -15,6 +15,7 @@ internal/
 ├── repositories/ → MongoDB implementation
 ├── handlers/     → HTTP layer
 └── middleware/   → request logger
+└── dto/   
 ```
 
 > The main rule: dependencies always point inward. The `domain` layer knows no other layer.
